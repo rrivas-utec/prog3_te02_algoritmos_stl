@@ -3,6 +3,7 @@
 #include <deque>
 #include <algorithm>
 #include <type_traits>
+#include <functional>
 using namespace std;
 
 template<typename IterSource,
@@ -188,12 +189,116 @@ void ejemplo_lambda_capture_constante() {
     cout << x << endl;
 }
 
+int procesar_container_lambdas(const vector<function<int(int, int)>>& cnt,
+                                 int a, int b,
+                                 const function<int(int, int)> callable_proc = sumar,
+                                 int initial = 0) {
+    int resultado = initial;
+    for (const auto& fn: cnt)
+        resultado = callable_proc(resultado, fn(a, b));
+    return resultado;
+}
+void ejemplo_de_vector_puntero_lambdas() {
+    vector<function<int(int, int)>> vec_callables;
+    vec_callables.emplace_back(sumar);          // (30 + 20) = 50
+    vec_callables.emplace_back([](int a, int b){ return a - b;});         // (30 - 20) = 10
+    auto lambda_multiplicar = [](int a, int b) { return a * b; };
+    vec_callables.emplace_back(lambda_multiplicar);    // (30 * 20) = 600
+    auto total = procesar_container_lambdas(vec_callables,
+                                              30, 20,
+                                              lambda_multiplicar,
+                                              1);
+    cout << total << endl; // (30 + 20) * (30 - 20) * (30 * 20) = 660
+}
+
+template <typename T>
+struct is_multiple_functor {
+    is_multiple_functor(T &base) : base(base) {}
+    bool operator()(T value) { return value % base == 0; }
+private:
+    T& base;
+};
+
+void ejemplo_de_funciones_objeto() {
+    vector<int> v1 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    vector<int> v2;
+
+    // Llamada L-value
+    int base = 3;
+    vector<int> v3;
+    copy_if(begin(v1), end(v1),
+            back_inserter(v3),
+            is_multiple_functor<int>(base));
+    cout << v3 << endl;
+    // Llamada R-value
+    vector<int> v5;
+    base = 4;
+    copy_if(begin(v1), end(v1),
+            back_inserter(v5),
+            is_multiple_functor<int>(base));
+    cout << v5 << endl;
+}
+
+template<typename T>
+struct menor {
+    bool operator()(T a, T b) { return a < b; }
+};
+
+template<typename T>
+struct mayor {
+    bool operator()(T a, T b) { return a > b; }
+};
+
+void ejemplo_ordenar() {
+    vector<int> v1 = {1, 3, 2, 7, 5, 4, 10, 20, 11};
+    sort(begin(v1), end(v1), menor<int>());
+    cout << v1 << endl;
+    sort(begin(v1), end(v1), mayor<int>());
+}
+
+bool is_multiple_3(int value, int base) {
+    return value % base == 0;
+}
+
+void ejemplo_funcion_parcial() {
+    vector<int> v1 = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
+    vector<int> v2;
+
+    using namespace std::placeholders;
+
+    auto is_multiple_fpartial = bind(is_multiple_3, _1, 3);
+
+    // Llamada L-value
+    vector<int> v3;
+    copy_if(begin(v1), end(v1),
+            back_inserter(v3),
+            is_multiple_fpartial);
+    cout << v3 << endl;
+}
+
+int suma_triple(int a, int b, int c) { return a + b + c; }
+
+void ejemplo2_funcion_parcial() {
+    using namespace std::placeholders;
+    auto sumar_doble = bind(suma_triple, _1, _2, 10);
+    cout << sumar_doble(10, 20) << endl;
+    int value = 10;
+    auto sumar_unico = bind(suma_triple, _1, ref(value), 10);
+    cout << sumar_unico(10) << endl;
+    value = 20;
+    cout << sumar_unico(10) << endl;
+}
+
 int main() {
 //    ejemplo_1();
 //    ejemplo_2();
 //    ejemplo_puntero_funcion();
 //    ejemplo_de_vector_puntero_funciones();
-    ejemplo_de_lambdas();
+//    ejemplo_de_lambdas();
 //    ejemplo_lambda_capture_constante();
+//    ejemplo_ordenar();
+//    ejemplo_de_funciones_objeto();
+//    ejemplo_funcion_parcial();
+    ejemplo2_funcion_parcial();
     return 0;
 }
